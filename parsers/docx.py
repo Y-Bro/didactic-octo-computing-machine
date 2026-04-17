@@ -1,8 +1,6 @@
 import base64
 import io
 from docx import Document
-from docx.oxml.ns import qn
-
 
 def parse_docx(docx_bytes: bytes) -> dict:
     """
@@ -11,7 +9,7 @@ def parse_docx(docx_bytes: bytes) -> dict:
     """
     doc = Document(io.BytesIO(docx_bytes))
 
-    paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+    paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
@@ -20,10 +18,11 @@ def parse_docx(docx_bytes: bytes) -> dict:
 
     full_text = "\n".join(paragraphs).strip()
     if not full_text:
-        raise ValueError("DOCX contains no text.")
+        raise ValueError("DOCX contains no text")
 
     images = []
-    for i, rel in enumerate(doc.part.rels.values()):
+    img_index = 0
+    for rel in doc.part.rels.values():
         if "image" in rel.reltype:
             image_bytes = rel.target_part.blob
             mime_type = rel.target_part.content_type
@@ -31,7 +30,8 @@ def parse_docx(docx_bytes: bytes) -> dict:
                 "data": base64.b64encode(image_bytes).decode("utf-8"),
                 "mime_type": mime_type,
                 "page": None,
-                "index": i,
+                "index": img_index,
             })
+            img_index += 1
 
     return {"text": full_text, "images": images}

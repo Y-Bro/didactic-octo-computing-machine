@@ -38,3 +38,15 @@ def test_parse_docx_raises_on_empty_text():
     doc.save(buf)
     with pytest.raises(ValueError, match="DOCX contains no text"):
         parse_docx(buf.getvalue())
+
+
+def test_parse_docx_extracts_table_cell_text():
+    doc = Document()
+    table = doc.add_table(rows=1, cols=2)
+    table.cell(0, 0).text = "Phase"
+    table.cell(0, 1).text = "Build"
+    buf = io.BytesIO()
+    doc.save(buf)
+    result = parse_docx(buf.getvalue())
+    assert "Phase" in result["text"]
+    assert "Build" in result["text"]
