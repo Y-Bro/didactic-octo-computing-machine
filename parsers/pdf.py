@@ -1,11 +1,10 @@
 import base64
-import io
 import fitz  # pymupdf
 
 
 def parse_pdf(pdf_bytes: bytes) -> dict:
     """
-    Returns {"text": str, "images": [{"data": base64_str, "page": int, "index": int}]}
+    Returns {"text": str, "images": [{"data": base64_str, "mime_type": str, "page": int, "index": int}]}
     Raises ValueError if no text is found (likely scanned PDF).
     """
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
