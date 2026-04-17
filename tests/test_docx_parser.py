@@ -1,4 +1,3 @@
-import base64
 import io
 import pytest
 from docx import Document
@@ -36,7 +35,7 @@ def test_parse_docx_raises_on_empty_text():
     doc = Document()
     buf = io.BytesIO()
     doc.save(buf)
-    with pytest.raises(ValueError, match="DOCX contains no text"):
+    with pytest.raises(ValueError, match="DOCX contains no extractable text"):
         parse_docx(buf.getvalue())
 
 
@@ -50,3 +49,30 @@ def test_parse_docx_extracts_table_cell_text():
     result = parse_docx(buf.getvalue())
     assert "Phase" in result["text"]
     assert "Build" in result["text"]
+
+
+def test_parse_docx_image_has_required_keys():
+    import struct, zlib
+
+    def make_png():
+        sig = b'\x89PNG\r\n\x1a\n'
+        ihdr = b'\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde'
+        idat_data = zlib.compress(b'\x00\xff\xff\xff')
+        idat = struct.pack('>I', len(idat_data)) + b'IDAT' + idat_data
+        idat += struct.pack('>I', zlib.crc32(b'IDAT' + idat_data) & 0xffffffff)
+        iend = b'\x00\x00\x00\x00IEND\xaeB`\x82'
+        return sig + ihdr + idat + iend
+
+    png_bytes = make_png()
+    doc = Document()
+    doc.add_paragraph("Some content")
+    doc.add_picture(io.BytesIO(png_bytes))
+    buf = io.BytesIO()
+    doc.save(buf)
+    result = parse_docx(buf.getvalue())
+    assert len(result["images"]) >= 1
+    img = result["images"][0]
+    assert "data" in img
+    assert "mime_type" in img
+    assert "page" in img
+    assert "index" in img
