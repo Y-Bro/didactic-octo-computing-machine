@@ -18,12 +18,16 @@ sow/
 input/
 
 # Template files — user-provided, never commit
-*.csv
 *.xlsx
 *.ods
 *.tsv
 template/*
 !template/__init__.py
+
+# CSV files — except shipped example template and test fixtures
+*.csv
+!template.csv
+!tests/fixtures/*.csv
 
 # Output files — generated, never commit
 output/
