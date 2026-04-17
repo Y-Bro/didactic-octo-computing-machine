@@ -23,6 +23,7 @@ input/
 *.tsv
 template/*
 !template/__init__.py
+!template/reader.py
 
 # CSV files — except shipped example template and test fixtures
 *.csv
@@ -39,3 +40,5 @@ output/
 .vscode/
 
 .claude/
+
+template.csv
