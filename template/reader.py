@@ -15,9 +15,6 @@ def read_template(path: str) -> dict:
 
     reader = csv.DictReader(content.splitlines())
     columns = reader.fieldnames
-    if not columns:
-        raise ValueError("Template CSV is empty.")
-
     sample_rows = [row for row in reader]
 
     return {"columns": list(columns), "sample_rows": sample_rows}
