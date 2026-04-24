@@ -36,14 +36,22 @@ def load_sow(path: str) -> dict:
         raise ValueError(f"Unsupported file format: {path}. Use .pdf or .docx.")
 
 
-def main():
+def build_arg_parser():
     parser = argparse.ArgumentParser(description="SoW Project Planner Agent")
     parser.add_argument("--sow", required=True, help="Path to SoW file (.pdf or .docx)")
     parser.add_argument("--template", required=True, help="Path to template CSV file")
     parser.add_argument("--llm", default="gemini", choices=["gemini", "claude"], help="LLM provider (default: gemini)")
-    parser.add_argument("--credentials", default="credentials.json", help="Path to Google service account credentials JSON")
+    parser.add_argument(
+        "--credentials",
+        default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "credentials.json"),
+        help="Path to Google service account credentials JSON. Defaults to $GOOGLE_APPLICATION_CREDENTIALS if set, else 'credentials.json'.",
+    )
     parser.add_argument("--title", default="Project Plan", help="Title for the output Google Sheet")
-    args = parser.parse_args()
+    return parser
+
+
+def main():
+    args = build_arg_parser().parse_args()
 
     print(f"Loading SoW from {args.sow}...")
     sow_data = load_sow(args.sow)
