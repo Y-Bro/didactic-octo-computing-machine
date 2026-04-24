@@ -57,16 +57,28 @@ class GeminiProvider(LLMProvider):
         type_map = {"string": genai.protos.Type.STRING, "integer": genai.protos.Type.INTEGER,
                     "number": genai.protos.Type.NUMBER, "boolean": genai.protos.Type.BOOLEAN,
                     "array": genai.protos.Type.ARRAY, "object": genai.protos.Type.OBJECT}
-        props = {}
-        for name, prop in schema.get("properties", {}).items():
-            props[name] = genai.protos.Schema(
-                type=type_map.get(prop.get("type", "string"), genai.protos.Type.STRING),
-                description=prop.get("description", ""),
+        schema_type = schema.get("type", "string")
+        description = schema.get("description", "")
+
+        if schema_type == "object":
+            props = {name: self._schema_to_gemini(prop)
+                     for name, prop in schema.get("properties", {}).items()}
+            return genai.protos.Schema(
+                type=genai.protos.Type.OBJECT,
+                properties=props,
+                required=schema.get("required", []),
+                description=description,
+            )
+        if schema_type == "array":
+            items_schema = schema.get("items", {"type": "string"})
+            return genai.protos.Schema(
+                type=genai.protos.Type.ARRAY,
+                items=self._schema_to_gemini(items_schema),
+                description=description,
             )
         return genai.protos.Schema(
-            type=genai.protos.Type.OBJECT,
-            properties=props,
-            required=schema.get("required", []),
+            type=type_map.get(schema_type, genai.protos.Type.STRING),
+            description=description,
         )
 
     def _convert_history(self, messages: list[dict]) -> list:
