@@ -57,8 +57,9 @@ python main.py \
 | `--sow` | yes | — | Path to SoW file (`.pdf` or `.docx`) |
 | `--template` | yes | — | Path to CSV template defining output columns |
 | `--llm` | no | `gemini` | LLM provider (`gemini` or `claude`) |
-| `--credentials` | no | `credentials.json` | Path to Google service account key |
+| `--credentials` | no | `$GOOGLE_APPLICATION_CREDENTIALS` if set, else `credentials.json` | Path to Google service account key |
 | `--title` | no | `Project Plan` | Title of the output Google Sheet |
+| `--verbose` | no | (off) | Enable DEBUG-level logging on the agent loop |
 
 ### Template CSV format
 
@@ -71,9 +72,23 @@ Build,API,REST API,2026-05-01,2026-05-10,7,Example row
 
 ### Output
 
-On success the command prints a Google Sheet URL. The sheet contains:
+On success the CLI prints a structured **Run Summary**:
+
+```
+==================================================
+Run Summary
+==================================================
+Model:      gemini
+Iterations: 3
+Rows:       7
+Gaps:       1
+Elapsed:    12.4s
+Sheet:      https://docs.google.com/spreadsheets/d/...
+```
+
+The created Google Sheet contains:
 - a **Project Plan** tab — one row per deliverable, columns matching the template
-- a **Gaps** tab (only if gaps were flagged) — reason + location for every ambiguous item
+- a **Gaps** tab (only if gaps were flagged) — reason + location per ambiguous item
 
 ## Tests
 

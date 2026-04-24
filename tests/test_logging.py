@@ -78,7 +78,7 @@ def test_loop_logs_tool_names_per_iteration(caplog):
     assert any("flag_gap" in m for m in messages), f"Tool name 'flag_gap' not found in logs; got: {messages}"
 
 
-def test_main_verbose_flag_sets_debug_level():
+def test_verbose_flag_parses():
     """--verbose parses to True; omitting it defaults to False."""
     from main import build_arg_parser
 
