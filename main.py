@@ -3,6 +3,8 @@ import logging
 import os
 import time
 
+from dotenv import load_dotenv
+
 from parsers.pdf import parse_pdf
 from parsers.docx import parse_docx
 from template.reader import read_template
@@ -56,6 +58,7 @@ def build_arg_parser():
 
 
 def main():
+    load_dotenv()
     args = build_arg_parser().parse_args()
 
     logging.basicConfig(
