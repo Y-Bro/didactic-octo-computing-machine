@@ -10,9 +10,6 @@ venv/
 .env
 credentials.json
 
-# OAuth token cache (refreshed automatically, never commit)
-.oauth_token.json
-
 # SoW input files — never commit client documents
 *.pdf
 *.docx
