@@ -196,3 +196,28 @@ def test_gemini_parse_response_ignores_empty_function_call():
 
     assert result.tool_calls == []
     assert result.text == "Plan complete."
+
+
+def test_gemini_schema_handles_array_with_object_items():
+    """Regression: write_to_sheet's rows param is array-of-objects; must recurse."""
+    with patch("agent.providers.gemini.genai") as mock_genai:
+        provider = GeminiProvider(api_key="fake-key")
+        provider._schema_to_gemini({
+            "type": "object",
+            "properties": {
+                "rows": {
+                    "type": "array",
+                    "description": "list of rows",
+                    "items": {"type": "object"},
+                },
+                "title": {"type": "string"},
+            },
+            "required": ["title", "rows"],
+        })
+
+        calls = mock_genai.protos.Schema.call_args_list
+        type_kwargs = [c.kwargs.get("type") for c in calls]
+        assert mock_genai.protos.Type.ARRAY in type_kwargs
+        array_call = next(c for c in calls if c.kwargs.get("type") is mock_genai.protos.Type.ARRAY)
+        assert "items" in array_call.kwargs
+
