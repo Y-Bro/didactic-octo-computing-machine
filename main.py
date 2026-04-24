@@ -50,16 +50,6 @@ def build_arg_parser():
     parser.add_argument("--template", required=True, help="Path to template CSV file")
     parser.add_argument("--llm", default="gemini", choices=["gemini", "claude"], help="LLM provider (default: gemini)")
     parser.add_argument("--model", default=None, help="Override default LLM model (else uses $GEMINI_MODEL / $ANTHROPIC_MODEL if set, else provider default).")
-    parser.add_argument(
-        "--credentials",
-        default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "credentials.json"),
-        help="Path to OAuth 2.0 client secret JSON (Desktop app type). Defaults to $GOOGLE_APPLICATION_CREDENTIALS if set, else 'credentials.json'.",
-    )
-    parser.add_argument(
-        "--token-cache",
-        default=".oauth_token.json",
-        help="Path to cached OAuth token (refreshed automatically)",
-    )
     parser.add_argument("--title", default="Project Plan", help="Title for the output Google Sheet")
     parser.add_argument("--verbose", action="store_true", default=False, help="Enable DEBUG-level logging")
     return parser
@@ -84,10 +74,7 @@ def main():
     print(f"Initializing {args.llm} provider...")
     provider = build_provider(args.llm, model=args.model)
 
-    sheets_writer = SheetsWriter(
-        client_secret_path=args.credentials,
-        token_cache_path=args.token_cache,
-    )
+    sheets_writer = SheetsWriter()
 
     print("Running agent...")
     start = time.monotonic()
