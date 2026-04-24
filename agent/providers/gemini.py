@@ -30,7 +30,7 @@ class GeminiProvider(LLMProvider):
     def _parse_response(self, response) -> LLMResponse:
         tool_calls = []
         for part in response.parts:
-            if part.function_call:
+            if part.function_call and part.function_call.name:
                 fn = part.function_call
                 tool_calls.append(ToolCall(
                     id=str(uuid.uuid4()),
