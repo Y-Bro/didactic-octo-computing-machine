@@ -60,3 +60,40 @@ def test_create_sheet_retries_on_failure():
         writer = SheetsWriter(credentials_path="fake.json")
         url = writer.create_sheet(title="My Plan", rows=SAMPLE_ROWS, gaps=[])
     assert "docs.google.com" in url
+
+
+def test_create_sheet_retries_on_values_update_failure():
+    mock_service = MagicMock()
+    mock_service.spreadsheets().create().execute.return_value = {
+        "spreadsheetId": "sheet123",
+        "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/sheet123",
+    }
+    mock_service.spreadsheets().values().update().execute.side_effect = [
+        Exception("transient network error"),
+        {},
+    ]
+    with patch("sheets.writer.build_service", return_value=mock_service):
+        with patch("time.sleep"):
+            writer = SheetsWriter(credentials_path="fake.json")
+            url = writer.create_sheet(title="My Plan", rows=SAMPLE_ROWS, gaps=[])
+    assert "docs.google.com" in url
+    assert mock_service.spreadsheets().values().update().execute.call_count == 2
+
+
+def test_create_sheet_retries_on_batch_update_failure():
+    mock_service = MagicMock()
+    mock_service.spreadsheets().create().execute.return_value = {
+        "spreadsheetId": "sheet123",
+        "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/sheet123",
+    }
+    mock_service.spreadsheets().values().update().execute.return_value = {}
+    mock_service.spreadsheets().batchUpdate().execute.side_effect = [
+        Exception("transient network error"),
+        {},
+    ]
+    with patch("sheets.writer.build_service", return_value=mock_service):
+        with patch("time.sleep"):
+            writer = SheetsWriter(credentials_path="fake.json")
+            url = writer.create_sheet(title="My Plan", rows=SAMPLE_ROWS, gaps=SAMPLE_GAPS)
+    assert "docs.google.com" in url
+    assert mock_service.spreadsheets().batchUpdate().execute.call_count == 2

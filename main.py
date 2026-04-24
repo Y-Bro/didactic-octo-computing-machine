@@ -1,5 +1,7 @@
 import argparse
+import logging
 import os
+import time
 
 from parsers.pdf import parse_pdf
 from parsers.docx import parse_docx
@@ -36,14 +38,28 @@ def load_sow(path: str) -> dict:
         raise ValueError(f"Unsupported file format: {path}. Use .pdf or .docx.")
 
 
-def main():
+def build_arg_parser():
     parser = argparse.ArgumentParser(description="SoW Project Planner Agent")
     parser.add_argument("--sow", required=True, help="Path to SoW file (.pdf or .docx)")
     parser.add_argument("--template", required=True, help="Path to template CSV file")
     parser.add_argument("--llm", default="gemini", choices=["gemini", "claude"], help="LLM provider (default: gemini)")
-    parser.add_argument("--credentials", default="credentials.json", help="Path to Google service account credentials JSON")
+    parser.add_argument(
+        "--credentials",
+        default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "credentials.json"),
+        help="Path to Google service account credentials JSON. Defaults to $GOOGLE_APPLICATION_CREDENTIALS if set, else 'credentials.json'.",
+    )
     parser.add_argument("--title", default="Project Plan", help="Title for the output Google Sheet")
-    args = parser.parse_args()
+    parser.add_argument("--verbose", action="store_true", default=False, help="Enable DEBUG-level logging")
+    return parser
+
+
+def main():
+    args = build_arg_parser().parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
 
     print(f"Loading SoW from {args.sow}...")
     sow_data = load_sow(args.sow)
@@ -59,14 +75,25 @@ def main():
     sheets_writer = SheetsWriter(credentials_path=args.credentials)
 
     print("Running agent...")
-    sheet_url = run_agent(
+    start = time.monotonic()
+    result = run_agent(
         sow_data=sow_data,
         template=template,
         provider=provider,
         sheets_writer=sheets_writer,
     )
+    elapsed = time.monotonic() - start
 
-    print(f"\nDone! Project plan created: {sheet_url}")
+    print()
+    print("=" * 50)
+    print("Run Summary")
+    print("=" * 50)
+    print(f"Model:      {args.llm}")
+    print(f"Iterations: {result.iterations}")
+    print(f"Rows:       {result.rows}")
+    print(f"Gaps:       {result.gaps}")
+    print(f"Elapsed:    {elapsed:.1f}s")
+    print(f"Sheet:      {result.sheet_url}")
 
 
 if __name__ == "__main__":

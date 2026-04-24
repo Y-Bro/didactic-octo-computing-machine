@@ -169,3 +169,30 @@ def test_claude_add_tool_results_appends_to_messages():
     assert messages[-1]["role"] == "user"
     assert messages[-1]["content"][0]["type"] == "tool_result"
     assert messages[-1]["content"][0]["tool_use_id"] == "toolu_01"
+
+
+def test_gemini_parse_response_ignores_empty_function_call():
+    """Real Gemini SDK returns truthy but empty function_call protos for text parts."""
+    empty_fn = MagicMock()
+    empty_fn.name = ""  # empty-name proto
+
+    mock_part = MagicMock()
+    mock_part.text = "Plan complete."
+    mock_part.function_call = empty_fn  # truthy but empty
+
+    mock_response = MagicMock()
+    mock_response.parts = [mock_part]
+    mock_response.text = "Plan complete."
+
+    mock_chat = MagicMock()
+    mock_chat.send_message.return_value = mock_response
+    mock_model = MagicMock()
+    mock_model.start_chat.return_value = mock_chat
+
+    with patch("agent.providers.gemini.genai") as mock_genai:
+        mock_genai.GenerativeModel.return_value = mock_model
+        provider = GeminiProvider(api_key="fake-key")
+        result = provider.complete("system", [{"role": "user", "content": "hi"}], tools=[])
+
+    assert result.tool_calls == []
+    assert result.text == "Plan complete."
