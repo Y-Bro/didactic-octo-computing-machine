@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 
 from parsers.pdf import parse_pdf
@@ -47,11 +48,17 @@ def build_arg_parser():
         help="Path to Google service account credentials JSON. Defaults to $GOOGLE_APPLICATION_CREDENTIALS if set, else 'credentials.json'.",
     )
     parser.add_argument("--title", default="Project Plan", help="Title for the output Google Sheet")
+    parser.add_argument("--verbose", action="store_true", default=False, help="Enable DEBUG-level logging")
     return parser
 
 
 def main():
     args = build_arg_parser().parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
 
     print(f"Loading SoW from {args.sow}...")
     sow_data = load_sow(args.sow)

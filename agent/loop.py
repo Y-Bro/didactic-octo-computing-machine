@@ -1,8 +1,13 @@
+import logging
+import time
+
 from agent.prompt import build_system_prompt
 from agent.tools import get_tool_schemas, ToolExecutor
 from agent.providers.base import LLMProvider, ToolResult
 
 MAX_ITERATIONS = 20
+
+logger = logging.getLogger(__name__)
 
 
 def run_agent(sow_data: dict, template: dict, provider: LLMProvider, sheets_writer) -> str:
@@ -21,9 +26,19 @@ def run_agent(sow_data: dict, template: dict, provider: LLMProvider, sheets_writ
     sheet_url = None
 
     for iteration in range(MAX_ITERATIONS):
+        logger.info("iteration %d starting", iteration + 1)
+        start = time.time()
+
         response = provider.complete(system=system, messages=messages, tools=tools)
 
         if response.text is not None and not response.tool_calls:
+            logger.info(
+                "iteration %d: tools=%s latency_ms=%d",
+                iteration + 1,
+                ["<text>"],
+                int((time.time() - start) * 1000),
+            )
+            logger.info("agent complete after %d iteration(s)", iteration + 1)
             break
 
         messages = provider.add_assistant_turn(messages, response)
@@ -39,6 +54,13 @@ def run_agent(sow_data: dict, template: dict, provider: LLMProvider, sheets_writ
             if tool_call.name == "write_to_sheet" and "docs.google.com" in output:
                 sheet_url = output
 
+        logger.info(
+            "iteration %d: tools=%s latency_ms=%d",
+            iteration + 1,
+            [tc.name for tc in response.tool_calls] or ["<text>"],
+            int((time.time() - start) * 1000),
+        )
+
         messages = provider.add_tool_results(messages, results)
     else:
         raise RuntimeError(
@@ -47,6 +69,7 @@ def run_agent(sow_data: dict, template: dict, provider: LLMProvider, sheets_writ
         )
 
     if sheet_url is None:
+        logger.warning("agent finished but wrote no sheet")
         raise RuntimeError("Agent completed without calling write_to_sheet. No Google Sheet was created.")
 
     return sheet_url
