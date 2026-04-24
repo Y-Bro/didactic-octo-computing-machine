@@ -1,9 +1,15 @@
 import time
+from pathlib import Path
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from google.oauth2 import service_account
 
 
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.file",
+]
 
 
 def _retry(fn, attempts=2, sleep=1):
@@ -16,19 +22,33 @@ def _retry(fn, attempts=2, sleep=1):
             time.sleep(sleep)
 
 
-def build_service(credentials_path: str):
-    creds = service_account.Credentials.from_service_account_file(
-        credentials_path, scopes=SCOPES
-    )
+def _get_credentials(client_secret_path: str, token_cache_path: str):
+    creds = None
+    if Path(token_cache_path).exists():
+        creds = Credentials.from_authorized_user_file(token_cache_path, SCOPES)
+    if creds and creds.valid:
+        return creds
+    if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+    else:
+        flow = InstalledAppFlow.from_client_secrets_file(client_secret_path, SCOPES)
+        creds = flow.run_local_server(port=0)
+    Path(token_cache_path).write_text(creds.to_json())
+    return creds
+
+
+def build_service(client_secret_path: str, token_cache_path: str):
+    creds = _get_credentials(client_secret_path, token_cache_path)
     return build("sheets", "v4", credentials=creds)
 
 
 class SheetsWriter:
-    def __init__(self, credentials_path: str):
-        self._credentials_path = credentials_path
+    def __init__(self, client_secret_path: str, token_cache_path: str = ".oauth_token.json"):
+        self._client_secret_path = client_secret_path
+        self._token_cache_path = token_cache_path
 
     def create_sheet(self, title: str, rows: list[dict], gaps: list[dict]) -> str:
-        service = build_service(self._credentials_path)
+        service = build_service(self._client_secret_path, self._token_cache_path)
 
         spreadsheet_body = {
             "properties": {"title": title},

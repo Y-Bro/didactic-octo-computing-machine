@@ -13,7 +13,8 @@ A Python CLI that reads a Statement of Work (PDF or DOCX) and produces a structu
 ## Requirements
 
 - Python 3.11+
-- A Google Cloud service account with the Google Sheets API enabled
+- A Google Cloud project with the Google Sheets API and Google Drive API enabled
+- An OAuth 2.0 client secret (Desktop app type) from Google Cloud Console
 - A Gemini API key (default) and/or an Anthropic API key
 
 ## Setup
@@ -36,9 +37,14 @@ A Python CLI that reads a Statement of Work (PDF or DOCX) and produces a structu
    Required variables:
    - `GEMINI_API_KEY` — only if using `--llm gemini`
    - `ANTHROPIC_API_KEY` — only if using `--llm claude`
-   - `GOOGLE_APPLICATION_CREDENTIALS` — path to your Google service-account JSON (default: `credentials.json` in the project root)
+   - `GOOGLE_APPLICATION_CREDENTIALS` — path to your OAuth client secret JSON (default: `credentials.json` in the project root)
    - `GEMINI_MODEL` / `ANTHROPIC_MODEL` — optional model overrides (e.g. `gemini-2.0-pro`); the `--model` CLI flag takes precedence over these env vars, and both fall back to each provider's built-in default if unset.
-5. Place your Google service-account key file at the path pointed to by `GOOGLE_APPLICATION_CREDENTIALS`. Share the target Sheet's parent folder with the service-account email if you want the sheet to land somewhere specific.
+5. Set up Google OAuth credentials:
+   1. Go to [Google Cloud Console](https://console.cloud.google.com) and create or select a project.
+   2. Enable the **Google Sheets API** and **Google Drive API**.
+   3. Configure the OAuth consent screen: External → add your email as a test user.
+   4. Go to **Credentials → Create Credentials → OAuth client ID**, set Application type to **Desktop app**, download the JSON, and save it as `credentials.json` at the project root.
+   5. Run normally — the first run opens a browser to approve access; the token is cached in `.oauth_token.json` for subsequent runs.
 
 ## Usage
 
@@ -59,7 +65,8 @@ python main.py \
 | `--template` | yes | — | Path to CSV template defining output columns |
 | `--llm` | no | `gemini` | LLM provider (`gemini` or `claude`) |
 | `--model` | no | provider default | Override model name. Also reads $GEMINI_MODEL / $ANTHROPIC_MODEL. |
-| `--credentials` | no | `$GOOGLE_APPLICATION_CREDENTIALS` if set, else `credentials.json` | Path to Google service account key |
+| `--credentials` | no | `$GOOGLE_APPLICATION_CREDENTIALS` if set, else `credentials.json` | Path to OAuth client secret JSON |
+| `--token-cache` | no | `.oauth_token.json` | Path where OAuth token is cached between runs |
 | `--title` | no | `Project Plan` | Title of the output Google Sheet |
 | `--verbose` | no | (off) | Enable DEBUG-level logging on the agent loop |
 
