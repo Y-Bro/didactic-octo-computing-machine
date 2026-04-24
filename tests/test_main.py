@@ -98,3 +98,18 @@ def test_model_cli_flag_parses():
     assert args.model == "foo-1"
     args_no_flag = build_arg_parser().parse_args(["--sow", "x", "--template", "y"])
     assert args_no_flag.model is None
+
+
+def test_load_dotenv_populates_env_from_dotenv_file(tmp_path, monkeypatch):
+    """main.load_dotenv pushes .env keys into os.environ."""
+    import os
+    from main import load_dotenv
+
+    env_path = tmp_path / ".env"
+    env_path.write_text("_DOTENV_TEST_SIGIL=loaded-from-dotenv\n")
+    monkeypatch.delenv("_DOTENV_TEST_SIGIL", raising=False)
+
+    load_dotenv(dotenv_path=env_path)
+
+    assert os.environ.get("_DOTENV_TEST_SIGIL") == "loaded-from-dotenv"
+
