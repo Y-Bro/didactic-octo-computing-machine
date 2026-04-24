@@ -102,3 +102,70 @@ def test_gemini_add_tool_results_appends_to_messages():
 
     assert messages[-1]["role"] == "tool"
     assert len(messages[-1]["results"]) == 1
+
+
+from agent.providers.claude import ClaudeProvider
+
+
+def test_claude_complete_returns_text_response():
+    mock_block = MagicMock()
+    mock_block.type = "text"
+    mock_block.text = "Plan complete."
+
+    mock_response = MagicMock()
+    mock_response.stop_reason = "end_turn"
+    mock_response.content = [mock_block]
+
+    with patch("agent.providers.claude.anthropic.Anthropic") as MockClient:
+        mock_client = MagicMock()
+        MockClient.return_value = mock_client
+        mock_client.messages.create.return_value = mock_response
+
+        provider = ClaudeProvider(api_key="fake-key")
+        messages = [{"role": "user", "content": "Hello"}]
+        result = provider.complete("System prompt", messages, tools=[])
+
+    assert result.text == "Plan complete."
+    assert result.tool_calls == []
+
+
+def test_claude_complete_returns_tool_call():
+    mock_tool_block = MagicMock()
+    mock_tool_block.type = "tool_use"
+    mock_tool_block.id = "toolu_01"
+    mock_tool_block.name = "flag_gap"
+    mock_tool_block.input = {"reason": "unclear", "location": "page 3"}
+
+    mock_response = MagicMock()
+    mock_response.stop_reason = "tool_use"
+    mock_response.content = [mock_tool_block]
+
+    with patch("agent.providers.claude.anthropic.Anthropic") as MockClient:
+        mock_client = MagicMock()
+        MockClient.return_value = mock_client
+        mock_client.messages.create.return_value = mock_response
+
+        provider = ClaudeProvider(api_key="fake-key")
+        messages = [{"role": "user", "content": "Hello"}]
+        result = provider.complete("System prompt", messages, tools=[])
+
+    assert result.text is None
+    assert len(result.tool_calls) == 1
+    assert result.tool_calls[0].id == "toolu_01"
+    assert result.tool_calls[0].name == "flag_gap"
+
+
+def test_claude_add_tool_results_appends_to_messages():
+    with patch("agent.providers.claude.anthropic.Anthropic"):
+        provider = ClaudeProvider(api_key="fake-key")
+
+    messages = [{"role": "user", "content": "Hello"}]
+    response = LLMResponse(tool_calls=[ToolCall(id="toolu_01", name="flag_gap", arguments={})], text=None)
+    results = [ToolResult(call_id="toolu_01", name="flag_gap", content="Gap recorded.")]
+
+    messages = provider.add_assistant_turn(messages, response)
+    messages = provider.add_tool_results(messages, results)
+
+    assert messages[-1]["role"] == "user"
+    assert messages[-1]["content"][0]["type"] == "tool_result"
+    assert messages[-1]["content"][0]["tool_use_id"] == "toolu_01"
