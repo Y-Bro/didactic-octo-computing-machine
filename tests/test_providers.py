@@ -198,6 +198,48 @@ def test_gemini_parse_response_ignores_empty_function_call():
     assert result.text == "Plan complete."
 
 
+def test_gemini_complete_catches_malformed_function_call():
+    """complete() must catch StopCandidateException with MALFORMED_FUNCTION_CALL
+    finish_reason and return a recoverable LLMResponse instead of raising."""
+    from google.generativeai.types.generation_types import StopCandidateException
+
+    # Build a fake candidate whose finish_reason.name is MALFORMED_FUNCTION_CALL
+    mock_candidate = MagicMock()
+    mock_candidate.finish_reason.name = "MALFORMED_FUNCTION_CALL"
+
+    exc = StopCandidateException(mock_candidate)
+
+    mock_chat = MagicMock()
+    mock_chat.send_message.side_effect = exc
+
+    mock_model = MagicMock()
+    mock_model.start_chat.return_value = mock_chat
+
+    with patch("agent.providers.gemini.genai") as mock_genai:
+        mock_genai.GenerativeModel.return_value = mock_model
+        provider = GeminiProvider(api_key="fake-key")
+        result = provider.complete("system", [{"role": "user", "content": "hi"}], tools=[])
+
+    assert result.tool_calls == [], "tool_calls must be empty on MALFORMED_FUNCTION_CALL"
+    assert result.text is not None, "text must be set to a recoverable message"
+    assert "malformed" in result.text.lower()
+
+
+def test_gemini_complete_propagates_other_exceptions():
+    """Non-MALFORMED_FUNCTION_CALL errors must still propagate."""
+    mock_chat = MagicMock()
+    mock_chat.send_message.side_effect = RuntimeError("network timeout")
+
+    mock_model = MagicMock()
+    mock_model.start_chat.return_value = mock_chat
+
+    with patch("agent.providers.gemini.genai") as mock_genai:
+        mock_genai.GenerativeModel.return_value = mock_model
+        provider = GeminiProvider(api_key="fake-key")
+        with pytest.raises(RuntimeError, match="network timeout"):
+            provider.complete("system", [{"role": "user", "content": "hi"}], tools=[])
+
+
 def test_gemini_schema_handles_array_with_object_items():
     """Regression: write_to_sheet's rows param is array-of-objects; must recurse."""
     with patch("agent.providers.gemini.genai") as mock_genai:

@@ -101,11 +101,14 @@ class ToolExecutor:
                 ],
             }
         ]
-        response = self._provider.complete(
-            system="You are a technical diagram analyst. Respond only with valid JSON.",
-            messages=messages,
-            tools=[],
-        )
+        try:
+            response = self._provider.complete(
+                system="You are a technical diagram analyst. Respond only with valid JSON.",
+                messages=messages,
+                tools=[],
+            )
+        except Exception as e:
+            return {"components": [], "integrations": [], "boundaries": [], "error": str(e)[:200]}
         try:
             return json.loads(response.text)
         except (json.JSONDecodeError, TypeError):

@@ -24,6 +24,8 @@ def parse_pdf(pdf_bytes: bytes) -> dict:
                     continue
                 seen_xrefs.add(xref)
                 base_image = doc.extract_image(xref)
+                if base_image["width"] < 200 or base_image["height"] < 200:
+                    continue
                 image_bytes = base_image["image"]
                 images.append({
                     "data": base64.b64encode(image_bytes).decode("utf-8"),

@@ -1,5 +1,6 @@
 import uuid
 import google.generativeai as genai
+from google.generativeai.types.generation_types import StopCandidateException
 from agent.providers.base import LLMProvider, LLMResponse, ToolCall, ToolResult
 
 
@@ -18,7 +19,15 @@ class GeminiProvider(LLMProvider):
         chat = model.start_chat(history=self._convert_history(messages[:-1]))
         last = messages[-1]
         content = self._convert_user_content(last["content"])
-        response = chat.send_message(content)
+        try:
+            response = chat.send_message(content, request_options={"timeout": 60})
+        except StopCandidateException as e:
+            if e.args and e.args[0].finish_reason.name == "MALFORMED_FUNCTION_CALL":
+                return LLMResponse(
+                    tool_calls=[],
+                    text="<model output was malformed; please retry>",
+                )
+            raise
         return self._parse_response(response)
 
     def add_assistant_turn(self, messages: list[dict], response: LLMResponse) -> list[dict]:
