@@ -37,6 +37,7 @@ A Python CLI that reads a Statement of Work (PDF or DOCX) and produces a structu
    - `GEMINI_API_KEY` — only if using `--llm gemini`
    - `ANTHROPIC_API_KEY` — only if using `--llm claude`
    - `GOOGLE_APPLICATION_CREDENTIALS` — path to your Google service-account JSON (default: `credentials.json` in the project root)
+   - `GEMINI_MODEL` / `ANTHROPIC_MODEL` — optional model overrides (e.g. `gemini-2.0-pro`); the `--model` CLI flag takes precedence over these env vars, and both fall back to each provider's built-in default if unset.
 5. Place your Google service-account key file at the path pointed to by `GOOGLE_APPLICATION_CREDENTIALS`. Share the target Sheet's parent folder with the service-account email if you want the sheet to land somewhere specific.
 
 ## Usage
@@ -57,6 +58,7 @@ python main.py \
 | `--sow` | yes | — | Path to SoW file (`.pdf` or `.docx`) |
 | `--template` | yes | — | Path to CSV template defining output columns |
 | `--llm` | no | `gemini` | LLM provider (`gemini` or `claude`) |
+| `--model` | no | provider default | Override model name. Also reads $GEMINI_MODEL / $ANTHROPIC_MODEL. |
 | `--credentials` | no | `$GOOGLE_APPLICATION_CREDENTIALS` if set, else `credentials.json` | Path to Google service account key |
 | `--title` | no | `Project Plan` | Title of the output Google Sheet |
 | `--verbose` | no | (off) | Enable DEBUG-level logging on the agent loop |
