@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import time
 
 from parsers.pdf import parse_pdf
 from parsers.docx import parse_docx
@@ -74,14 +75,25 @@ def main():
     sheets_writer = SheetsWriter(credentials_path=args.credentials)
 
     print("Running agent...")
-    sheet_url = run_agent(
+    start = time.monotonic()
+    result = run_agent(
         sow_data=sow_data,
         template=template,
         provider=provider,
         sheets_writer=sheets_writer,
     )
+    elapsed = time.monotonic() - start
 
-    print(f"\nDone! Project plan created: {sheet_url}")
+    print()
+    print("=" * 50)
+    print("Run Summary")
+    print("=" * 50)
+    print(f"Model:      {args.llm}")
+    print(f"Iterations: {result.iterations}")
+    print(f"Rows:       {result.rows}")
+    print(f"Gaps:       {result.gaps}")
+    print(f"Elapsed:    {elapsed:.1f}s")
+    print(f"Sheet:      {result.sheet_url}")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 import logging
 import time
+from dataclasses import dataclass
 
 from agent.prompt import build_system_prompt
 from agent.tools import get_tool_schemas, ToolExecutor
@@ -10,9 +11,17 @@ MAX_ITERATIONS = 20
 logger = logging.getLogger(__name__)
 
 
-def run_agent(sow_data: dict, template: dict, provider: LLMProvider, sheets_writer) -> str:
+@dataclass
+class RunResult:
+    sheet_url: str
+    iterations: int
+    rows: int
+    gaps: int
+
+
+def run_agent(sow_data: dict, template: dict, provider: LLMProvider, sheets_writer) -> RunResult:
     """
-    Runs the agentic loop. Returns the Google Sheet URL.
+    Runs the agentic loop. Returns a RunResult with sheet_url, iterations, rows, and gaps.
     sow_data: {"text": str, "images": [{"data": base64, "mime_type": str, "page": int, "index": int}]}
     template: {"columns": list[str], "sample_rows": list[dict]}
     """
@@ -24,12 +33,16 @@ def run_agent(sow_data: dict, template: dict, provider: LLMProvider, sheets_writ
     messages = [{"role": "user", "content": initial_content}]
 
     sheet_url = None
+    rows_written = 0
+    completed_iterations = 0
 
     for iteration in range(MAX_ITERATIONS):
         logger.info("iteration %d starting", iteration + 1)
         start = time.time()
 
         response = provider.complete(system=system, messages=messages, tools=tools)
+
+        completed_iterations = iteration + 1
 
         if response.text is not None and not response.tool_calls:
             logger.info(
@@ -53,6 +66,7 @@ def run_agent(sow_data: dict, template: dict, provider: LLMProvider, sheets_writ
             ))
             if tool_call.name == "write_to_sheet" and "docs.google.com" in output:
                 sheet_url = output
+                rows_written = len(tool_call.arguments.get("rows", []))
 
         logger.info(
             "iteration %d: tools=%s latency_ms=%d",
@@ -72,7 +86,12 @@ def run_agent(sow_data: dict, template: dict, provider: LLMProvider, sheets_writ
         logger.warning("agent finished but wrote no sheet")
         raise RuntimeError("Agent completed without calling write_to_sheet. No Google Sheet was created.")
 
-    return sheet_url
+    return RunResult(
+        sheet_url=sheet_url,
+        iterations=completed_iterations,
+        rows=rows_written,
+        gaps=len(executor.gaps),
+    )
 
 
 def _build_initial_content(sow_data: dict, template: dict) -> list:
