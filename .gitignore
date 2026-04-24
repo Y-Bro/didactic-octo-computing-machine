@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+# Secrets & credentials
+.env
+credentials.json
+
+# SoW input files — never commit client documents
+*.pdf
+*.docx
+*.doc
+sow/
+input/
+
+# Template files — user-provided, never commit
+*.xlsx
+*.ods
+*.tsv
+template/*
+!template/__init__.py
+!template/reader.py
+
+# CSV files — except shipped example template and test fixtures
+*.csv
+!template.csv
+!tests/fixtures/*.csv
+
+# Output files — generated, never commit
+output/
+*.output.json
+
+# IDE
+.DS_Store
+.idea/
+.vscode/
+
+.claude/
+
+
+template.csv
