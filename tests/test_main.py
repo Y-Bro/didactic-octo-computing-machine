@@ -80,3 +80,43 @@ def test_credentials_defaults_to_credentials_json_when_env_var_unset():
         os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
         args = build_arg_parser().parse_args(["--sow", "x.pdf", "--template", "t.csv"])
     assert args.credentials == "credentials.json"
+
+
+def test_build_provider_uses_explicit_model_over_env_var():
+    with patch("agent.providers.gemini.genai"):
+        with patch.dict("os.environ", {"GEMINI_API_KEY": "fake", "GEMINI_MODEL": "from-env"}, clear=True):
+            provider = build_provider("gemini", model="from-flag")
+    assert provider._model_name == "from-flag"
+
+
+def test_build_provider_uses_gemini_env_var_when_no_model_arg():
+    with patch("agent.providers.gemini.genai"):
+        with patch.dict("os.environ", {"GEMINI_API_KEY": "fake", "GEMINI_MODEL": "env-value"}, clear=True):
+            provider = build_provider("gemini")
+    assert provider._model_name == "env-value"
+
+
+def test_build_provider_uses_anthropic_env_var_when_no_model_arg():
+    with patch("agent.providers.claude.anthropic.Anthropic"):
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake", "ANTHROPIC_MODEL": "env-value"}, clear=True):
+            provider = build_provider("claude")
+    assert provider._model == "env-value"
+
+
+def test_build_provider_falls_back_to_provider_default():
+    with patch("agent.providers.gemini.genai"):
+        with patch.dict("os.environ", {"GEMINI_API_KEY": "fake"}, clear=True):
+            gemini_provider = build_provider("gemini")
+    with patch("agent.providers.claude.anthropic.Anthropic"):
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "fake"}, clear=True):
+            claude_provider = build_provider("claude")
+    assert gemini_provider._model_name == "gemini-2.0-flash"
+    assert claude_provider._model == "claude-sonnet-4-6"
+
+
+def test_model_cli_flag_parses():
+    from main import build_arg_parser
+    args = build_arg_parser().parse_args(["--sow", "x", "--template", "y", "--model", "foo-1"])
+    assert args.model == "foo-1"
+    args_no_flag = build_arg_parser().parse_args(["--sow", "x", "--template", "y"])
+    assert args_no_flag.model is None

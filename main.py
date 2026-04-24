@@ -10,18 +10,24 @@ from agent.loop import run_agent
 from sheets.writer import SheetsWriter
 
 
-def build_provider(llm: str):
+def build_provider(llm: str, model: str | None = None):
     if llm == "gemini":
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             raise EnvironmentError("GEMINI_API_KEY environment variable is not set.")
+        resolved_model = model or os.environ.get("GEMINI_MODEL")
         from agent.providers.gemini import GeminiProvider
+        if resolved_model:
+            return GeminiProvider(api_key=api_key, model=resolved_model)
         return GeminiProvider(api_key=api_key)
     elif llm == "claude":
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
             raise EnvironmentError("ANTHROPIC_API_KEY environment variable is not set.")
+        resolved_model = model or os.environ.get("ANTHROPIC_MODEL")
         from agent.providers.claude import ClaudeProvider
+        if resolved_model:
+            return ClaudeProvider(api_key=api_key, model=resolved_model)
         return ClaudeProvider(api_key=api_key)
     else:
         raise ValueError(f"Unknown LLM provider: {llm}. Choose 'gemini' or 'claude'.")
@@ -43,6 +49,7 @@ def build_arg_parser():
     parser.add_argument("--sow", required=True, help="Path to SoW file (.pdf or .docx)")
     parser.add_argument("--template", required=True, help="Path to template CSV file")
     parser.add_argument("--llm", default="gemini", choices=["gemini", "claude"], help="LLM provider (default: gemini)")
+    parser.add_argument("--model", default=None, help="Override default LLM model (else uses $GEMINI_MODEL / $ANTHROPIC_MODEL if set, else provider default).")
     parser.add_argument(
         "--credentials",
         default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "credentials.json"),
@@ -70,7 +77,7 @@ def main():
     print(f"Template columns: {', '.join(template['columns'])}")
 
     print(f"Initializing {args.llm} provider...")
-    provider = build_provider(args.llm)
+    provider = build_provider(args.llm, model=args.model)
 
     sheets_writer = SheetsWriter(credentials_path=args.credentials)
 
