@@ -54,3 +54,29 @@ def test_analyze_diagram_calls_provider(monkeypatch):
     executor = ToolExecutor(sheets_writer=MagicMock(), provider=mock_provider)
     result = executor.analyze_diagram(image_base64="abc123", page_number=1)
     assert "components" in result
+
+
+def test_analyze_diagram_returns_error_dict_on_provider_exception():
+    """When the provider raises any Exception, analyze_diagram must return an
+    error-keyed dict and must NOT re-raise, so the agent loop can continue."""
+    mock_provider = MagicMock()
+    mock_provider.complete.side_effect = RuntimeError("Gemini image rejected")
+    executor = ToolExecutor(sheets_writer=MagicMock(), provider=mock_provider)
+    result = executor.analyze_diagram(image_base64="abc123", page_number=2)
+    assert "error" in result, "error key must be present when provider raises"
+    assert result["components"] == []
+    assert result["integrations"] == []
+    assert result["boundaries"] == []
+    assert "Gemini image rejected" in result["error"]
+
+
+def test_analyze_diagram_does_not_reraise():
+    """analyze_diagram must never propagate provider exceptions."""
+    mock_provider = MagicMock()
+    mock_provider.complete.side_effect = ValueError("bad payload")
+    executor = ToolExecutor(sheets_writer=MagicMock(), provider=mock_provider)
+    # Should not raise
+    try:
+        executor.analyze_diagram(image_base64="xyz", page_number=0)
+    except Exception as exc:
+        pytest.fail(f"analyze_diagram re-raised an exception: {exc}")

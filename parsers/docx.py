@@ -1,5 +1,6 @@
 import base64
 import io
+import fitz  # pymupdf — used for image size detection
 from docx import Document
 
 
@@ -31,6 +32,13 @@ def parse_docx(docx_bytes: bytes) -> dict:
     for rel in doc.part.rels.values():
         if "image" in rel.reltype and not rel.is_external:
             image_bytes = rel.target_part.blob
+            try:
+                pix = fitz.Pixmap(image_bytes)
+                if pix.width < 200 or pix.height < 200:
+                    continue
+            except Exception:
+                # If we can't determine dimensions, include the image
+                pass
             mime_type = rel.target_part.content_type
             images.append({
                 "data": base64.b64encode(image_bytes).decode("utf-8"),
